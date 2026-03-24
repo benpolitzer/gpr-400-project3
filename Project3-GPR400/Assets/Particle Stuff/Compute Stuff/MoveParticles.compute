@@ -1,0 +1,26 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel MoveParticles
+
+struct vertexData
+{
+    float3 position;
+};
+
+RWStructuredBuffer<vertexData> verts;
+int vertCount;
+float time;
+
+[numthreads(8,8,1)]
+void MoveParticles (uint3 id : SV_DispatchThreadID)
+{
+    uint index = id.x + id.y * 8;//8 comes from the number of threads
+    
+    if (index > vertCount)
+        return;
+    
+    vertexData v = verts[index];
+    
+    v.position.y += sin(time + (index * 0.1f));
+    
+    verts[index] = v;
+}

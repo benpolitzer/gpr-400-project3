@@ -1,7 +1,7 @@
 using UnityEngine;
 
 [ExecuteInEditMode]
-public class ParticleVertexData : MonoBehaviour
+public class TestMeshGeneration : MonoBehaviour
 {
     MeshFilter mf;
 
