@@ -16,7 +16,7 @@ Shader "Unlit/InstancedParticleShader"
 
         Pass
         {
-            ZWrite Off
+            ZWrite On
             Blend SrcAlpha OneMinusSrcAlpha
             Cull Off
 
@@ -87,10 +87,10 @@ Shader "Unlit/InstancedParticleShader"
 
                 //setting UV data to match our corners with texture location
                 float2 uvs[4] = {
-                    float2(0,0),
-                    float2(1,0),
                     float2(0,1),
-                    float2(1,1)
+                    float2(1,1),
+                    float2(0,0),
+                    float2(1,0)
                 };
 
                 //adding a quad by adding 4 points to the triangle strip
@@ -106,7 +106,7 @@ Shader "Unlit/InstancedParticleShader"
             fixed4 frag (g2f i) : SV_Target
             {
                 fixed4 col = tex2D(_MainTex, i.uv);
-
+                //fixed4 col = fixed4(i.uv.r, i.uv.g, 0, 1);
                 return col;
             }
             ENDCG
