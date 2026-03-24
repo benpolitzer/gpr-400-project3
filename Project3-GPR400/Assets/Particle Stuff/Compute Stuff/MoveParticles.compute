@@ -20,7 +20,7 @@ void MoveParticles (uint3 id : SV_DispatchThreadID)
     
     vertexData v = verts[index];
     
-    v.position.y += sin(time + (index * 0.1f));
+    v.position.y = sin(time + (index * 0.1f));
     
     verts[index] = v;
 }

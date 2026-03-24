@@ -42,22 +42,14 @@ public class ParticleVertexData : MonoBehaviour
     void SendParticles()
     {
         computeShader.SetFloat("time", Time.time);
-        int threadGroups = Mathf.CeilToInt(vertexCount / 64f);
+        int threadGroups = (vertexCount + 63) / 64;
         computeShader.Dispatch(kernelIndex, threadGroups, 1, 1);
 
         Graphics.DrawProcedural(material, new Bounds(Vector3.zero, Vector3.one * 100f),
                         MeshTopology.Points, vertexCount);
-
-
-        vertexData[] vertOutput = new vertexData[vertexCount];
-        vertexBuffer.GetData(vertOutput);
-        for (int i = 0; i < vertexCount; i++)
-        {
-            Debug.Log(vertOutput[i].position.y);
-        }
     }
 
-    private void OnDestroy()
+    private void OnDisable()
     {
         vertexBuffer?.Release();
         vertexBuffer = null;
