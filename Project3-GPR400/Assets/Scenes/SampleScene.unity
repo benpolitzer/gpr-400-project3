@@ -150,7 +150,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9a1c54fc0e5aa884e8e3aaedfabf36ad, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  vertexCount: 256
+  vertexCount: 10000
   computeShader: {fileID: 7200000, guid: b7cb78f5951175143bf5549f0e520709, type: 3}
 --- !u!23 &89092357
 MeshRenderer:
@@ -591,7 +591,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 282165178}
-  m_Mesh: {fileID: 1495184713}
+  m_Mesh: {fileID: 1229726117}
 --- !u!4 &282165182
 Transform:
   m_ObjectHideFlags: 0
@@ -926,7 +926,7 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!43 &1495184713
+--- !u!43 &1229726117
 Mesh:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
