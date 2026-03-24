@@ -7,20 +7,23 @@ struct vertexData
 };
 
 RWStructuredBuffer<vertexData> verts;
-int vertCount;
+uint vertCount;
 float time;
+float3 basePosition;
 
 [numthreads(8,8,1)]
 void MoveParticles (uint3 id : SV_DispatchThreadID)
 {
-    uint index = id.x + id.y * 8;//8 comes from the number of threads
+    uint index = id.x + id.y * 8;//8 comes from the number of threads x
     
-    if (index > vertCount)
+    if (index >= vertCount)
         return;
     
     vertexData v = verts[index];
     
-    v.position.y = sin(time + (index * 0.1f));
+    v.position.x = basePosition.x + id.x * 1.0f;
+    v.position.z = basePosition.z + id.y * 1.0f;
+    v.position.y = basePosition.y + sin(time + (index * 0.1f));
     
     verts[index] = v;
 }

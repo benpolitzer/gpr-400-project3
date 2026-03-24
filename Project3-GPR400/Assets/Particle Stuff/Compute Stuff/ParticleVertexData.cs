@@ -1,5 +1,6 @@
 using Unity.Mathematics;
 using UnityEngine;
+using static UnityEditor.PlayerSettings;
 
 public class ParticleVertexData : MonoBehaviour
 {
@@ -24,7 +25,7 @@ public class ParticleVertexData : MonoBehaviour
             return;
         }
 
-        vertexBuffer = new ComputeBuffer(vertexCount, sizeof(float) * 3);
+        vertexBuffer = new ComputeBuffer(vertexCount * vertexCount, sizeof(float) * 3);
 
         kernelIndex = computeShader.FindKernel("MoveParticles");
         computeShader.SetBuffer(kernelIndex, "verts", vertexBuffer);
@@ -41,9 +42,10 @@ public class ParticleVertexData : MonoBehaviour
 
     void SendParticles()
     {
+        computeShader.SetFloats("basePosition", new float[] { transform.position.x, transform.position.y, transform.position.z });
         computeShader.SetFloat("time", Time.time);
-        int threadGroups = (vertexCount + 63) / 64;
-        computeShader.Dispatch(kernelIndex, threadGroups, 1, 1);
+        int threadGroups = (((int)Mathf.Sqrt(vertexCount)) + 63) / 64;
+        computeShader.Dispatch(kernelIndex, threadGroups, threadGroups, 1);
 
         Graphics.DrawProcedural(material, new Bounds(Vector3.zero, Vector3.one * 100f),
                         MeshTopology.Points, vertexCount);

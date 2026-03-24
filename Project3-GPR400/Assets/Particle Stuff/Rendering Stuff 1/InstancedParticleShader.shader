@@ -59,7 +59,7 @@ Shader "Unlit/InstancedParticleShader"
                 v2g o;
 
                 vertexData v = verts[input.vertexID];
-                o.vertPos = float4(v.position, 1.0);
+                o.vertPos = UnityObjectToClipPos(v.position);
                 return o;
             }
 
