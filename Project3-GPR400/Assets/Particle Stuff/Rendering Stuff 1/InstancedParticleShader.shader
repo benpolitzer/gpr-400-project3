@@ -27,11 +27,13 @@ Shader "Unlit/InstancedParticleShader"
 
             #include "UnityCG.cginc"
 
+            //must be the same as compute and scripts
             struct vertexData
             {
                 float3 position;
             };
 
+            //buffer from compute
             StructuredBuffer<vertexData> verts;
 
             struct appdata
@@ -57,7 +59,7 @@ Shader "Unlit/InstancedParticleShader"
             v2g vert (appdata input)
             {
                 v2g o;
-
+                //sends out data gotten from the buffer sampling based on vertex id
                 vertexData v = verts[input.vertexID];
                 o.vertPos = UnityObjectToClipPos(v.position);
                 return o;
@@ -66,6 +68,7 @@ Shader "Unlit/InstancedParticleShader"
             [maxvertexcount(6)]
             void geom(point v2g input[1], inout TriangleStream<g2f> triStream)
             {
+                //adding a point in each corner
                 float4 pos = input[0].vertPos;
 
                 float4 camRight = float4(1, 0, 0, 0);
@@ -79,25 +82,22 @@ Shader "Unlit/InstancedParticleShader"
                 float4 corners[4];
                 corners[0] = pos - right - up;
                 corners[1] = pos + right - up;
-                corners[2] = pos + right + up;
-                corners[3] = pos - right + up;
+                corners[2] = pos - right + up;
+                corners[3] = pos + right + up;
 
+                //setting UV data to match our corners with texture location
                 float2 uvs[4] = {
                     float2(0,0),
                     float2(1,0),
-                    float2(1,1),
-                    float2(0,1)
+                    float2(0,1),
+                    float2(1,1)
                 };
 
-
+                //adding a quad by adding 4 points to the triangle strip
                 g2f o;
 
                 o.vertPos = corners[0]; o.uv = uvs[0]; triStream.Append(o);
                 o.vertPos = corners[1]; o.uv = uvs[1]; triStream.Append(o);
-                o.vertPos = corners[2]; o.uv = uvs[2]; triStream.Append(o);
-                triStream.RestartStrip();
-
-                o.vertPos = corners[0]; o.uv = uvs[0]; triStream.Append(o);
                 o.vertPos = corners[2]; o.uv = uvs[2]; triStream.Append(o);
                 o.vertPos = corners[3]; o.uv = uvs[3]; triStream.Append(o);
                 triStream.RestartStrip();

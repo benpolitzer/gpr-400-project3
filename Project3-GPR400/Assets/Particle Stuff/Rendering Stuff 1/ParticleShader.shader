@@ -70,14 +70,14 @@ Shader "Unlit/ParticleShader"
                 float4 corners[4];
                 corners[0] = pos - right - up;
                 corners[1] = pos + right - up;
-                corners[2] = pos + right + up;
-                corners[3] = pos - right + up;
+                corners[2] = pos - right + up;
+                corners[3] = pos + right + up;
 
                 float2 uvs[4] = {
                     float2(0,0),
                     float2(1,0),
-                    float2(1,1),
-                    float2(0,1)
+                    float2(0,1),
+                    float2(1,1)
                 };
 
 
@@ -85,10 +85,6 @@ Shader "Unlit/ParticleShader"
 
                 o.vertex = corners[0]; o.uv = uvs[0]; triStream.Append(o);
                 o.vertex = corners[1]; o.uv = uvs[1]; triStream.Append(o);
-                o.vertex = corners[2]; o.uv = uvs[2]; triStream.Append(o);
-                triStream.RestartStrip();
-
-                o.vertex = corners[0]; o.uv = uvs[0]; triStream.Append(o);
                 o.vertex = corners[2]; o.uv = uvs[2]; triStream.Append(o);
                 o.vertex = corners[3]; o.uv = uvs[3]; triStream.Append(o);
                 triStream.RestartStrip();

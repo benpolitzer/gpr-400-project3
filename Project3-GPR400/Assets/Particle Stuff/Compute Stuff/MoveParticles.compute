@@ -6,25 +6,32 @@ struct vertexData
     float3 position;
 };
 
+//data that doesn't change (in scripting)
 RWStructuredBuffer<vertexData> verts;
 uint vertCount;
 int threadGroups;
+
+//data that does change
 float time;
 float3 basePosition;
 
 [numthreads(8,8,1)]
 void MoveParticles (uint3 id : SV_DispatchThreadID)
 {
+    //calculate unique index
     uint index = id.x + id.y * 8 * threadGroups;
     
     if (index >= vertCount)
         return;
     
+    //getting data in the buffer
     vertexData v = verts[index];
     
+    //setting new data to a temp
     v.position.x = basePosition.x + id.x * 1.0f;
     v.position.z = basePosition.z + id.y * 1.0f;
     v.position.y = basePosition.y + sin(time + (index * 0.1f));
     
+    //setting the buffers data to the temp
     verts[index] = v;
 }
