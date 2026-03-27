@@ -16,7 +16,7 @@ Shader "Unlit/InstancedParticleShader"
 
         Pass
         {
-            ZWrite On
+            ZWrite Off
             Blend SrcAlpha OneMinusSrcAlpha
             Cull Off
 
@@ -61,7 +61,7 @@ Shader "Unlit/InstancedParticleShader"
                 v2g o;
                 //sends out data gotten from the buffer sampling based on vertex id
                 vertexData v = verts[input.vertexID];
-                o.vertPos = UnityObjectToClipPos(v.position);
+                o.vertPos = float4(v.position, 0);
                 return o;
             }
 
@@ -71,8 +71,8 @@ Shader "Unlit/InstancedParticleShader"
                 //adding a point in each corner
                 float4 pos = input[0].vertPos;
 
-                float4 camRight = float4(1, 0, 0, 0);
-                float4 camUp    = float4(0, 1, 0, 0);
+                float4 camRight = normalize(float4(UNITY_MATRIX_V[0][0], UNITY_MATRIX_V[1][0], UNITY_MATRIX_V[2][0], 0));
+                float4 camUp    = normalize(float4(UNITY_MATRIX_V[0][1], UNITY_MATRIX_V[1][1], UNITY_MATRIX_V[2][1], 0));
 
                 float halfSize = _Size * 0.5;
 
@@ -96,10 +96,10 @@ Shader "Unlit/InstancedParticleShader"
                 //adding a quad by adding 4 points to the triangle strip
                 g2f o;
 
-                o.vertPos = corners[0]; o.uv = uvs[0]; triStream.Append(o);
-                o.vertPos = corners[1]; o.uv = uvs[1]; triStream.Append(o);
-                o.vertPos = corners[2]; o.uv = uvs[2]; triStream.Append(o);
-                o.vertPos = corners[3]; o.uv = uvs[3]; triStream.Append(o);
+                o.vertPos = UnityObjectToClipPos(corners[0]); o.uv = uvs[0]; triStream.Append(o);
+                o.vertPos = UnityObjectToClipPos(corners[1]); o.uv = uvs[1]; triStream.Append(o);
+                o.vertPos = UnityObjectToClipPos(corners[2]); o.uv = uvs[2]; triStream.Append(o);
+                o.vertPos = UnityObjectToClipPos(corners[3]); o.uv = uvs[3]; triStream.Append(o);
                 triStream.RestartStrip();
             }
 
