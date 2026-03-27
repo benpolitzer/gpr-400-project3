@@ -316,7 +316,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
+  - {fileID: 2100000, guid: 4f92669985f75ac4ebc70d92b147470d, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -396,9 +396,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   liquidRenderer: {fileID: 2095910239}
   fillOffset: 0.29
-  maxWobble: 0.03
+  maxWobble: 0.05
   wobbleSpeed: 2
-  recovery: 1.5
+  recovery: 1
   movementInfluence: 1
   rotationInfluence: 0.2
 --- !u!136 &272655106
@@ -591,7 +591,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 282165178}
-  m_Mesh: {fileID: 1229726117}
+  m_Mesh: {fileID: 904090808}
 --- !u!4 &282165182
 Transform:
   m_ObjectHideFlags: 0
@@ -926,7 +926,7 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!43 &1229726117
+--- !u!43 &904090808
 Mesh:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
