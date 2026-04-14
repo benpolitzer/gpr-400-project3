@@ -1,3 +1,5 @@
+// https://www.patreon.com/posts/fake-liquid-urp-75665057
+// Benjamin Politzer - Based on Minions Art's shader graph in their patreon post (converted from shader graph to HLSL)
 Shader "Custom/FakeLiquidURP_Section"
 {
     Properties
@@ -107,7 +109,8 @@ Shader "Custom/FakeLiquidURP_Section"
                 // Animate the wave motion over time
                 float t = _Time.y * _WaveSpeed;
 
-                // Layer several sine waves in different directions and scales so the surface feels less artificial
+                // Layer several sine waves in different directions and scales so the surface feels less artificial 
+                // Changed from Minion Arts implementation to make surface noise look more real
                 float wave1 = sin(relativeWS.x * _WaveFreq + t) * dynamicAmp;
                 float wave2 = sin(relativeWS.z * (_WaveFreq * 0.85) + t * 1.17) * (dynamicAmp * 0.55);
                 float wave3 = sin((relativeWS.x + relativeWS.z) * (_WaveFreq * 0.6) + t * 0.73) * (dynamicAmp * 0.4);

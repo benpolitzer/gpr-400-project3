@@ -1,3 +1,5 @@
+// https://www.patreon.com/posts/unity-liquid-18245226
+// Benjamin Politzer - Based on Minions Art Patreon post to pass movement data along with world fill position data to the shader
 using UnityEngine;
 
 [ExecuteAlways]
