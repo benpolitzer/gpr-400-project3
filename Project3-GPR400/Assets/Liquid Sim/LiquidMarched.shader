@@ -37,7 +37,7 @@ Shader "Custom/FakeLiquidMarched"
 
             Blend SrcAlpha OneMinusSrcAlpha
             ZWrite On
-            Cull Off
+            Cull Front
 
             HLSLPROGRAM
             #pragma vertex vert
@@ -109,87 +109,183 @@ Shader "Custom/FakeLiquidMarched"
                 // Animate the wave motion over time
                 float t = _Time.y * _WaveSpeed;
 
-                // Layer several sine waves in different directions and scales so the surface feels less artificial 
-                // Changed from Minion Arts implementation to make surface noise look more real
-                float wave1 = sin(relativeWS.x * _WaveFreq + t) * dynamicAmp;
-                float wave2 = sin(relativeWS.z * (_WaveFreq * 0.85) + t * 1.17) * (dynamicAmp * 0.55);
-                float wave3 = sin((relativeWS.x + relativeWS.z) * (_WaveFreq * 0.6) + t * 0.73) * (dynamicAmp * 0.4);
-                float wave4 = sin((relativeWS.x - relativeWS.z) * (_WaveFreq * 1.35) - t * 1.41) * (dynamicAmp * 0.2);
+                float4 baseCol = _LiquidColor;
+                
+                float3 camPos = GetCameraPositionWS();
+                float3 camRay = normalize(IN.positionWS - camPos);
+                float3 currentPos = IN.positionWS;
 
-                // Combine into final offset
-                float wave = wave1 + wave2 + wave3 + wave4;
-                wave *= 3;
-                //wave = -length(relativeWS.xz);//distance(relativeWS.xz, float2(0,0));
-
-                // Compute signed distance from current pixel to the fake liquid surface plane
-                // Positive/negative tells us whether the fragment is above or below the liquid surface
-                float surface = dot(relativeWS, liquidUpWS) - wave;
-
-                // Discard everything above the liquid surface
-                //clip(-surface);
-
-                // Soft band around the cut line to help blend toward the top color
-
-                // Fresnel/rim setup
-
-                // Determine whether we are rendering the front or back face
-                // If front face, int the inner top surface differently from the outer liquid body to fake a liquid surface
-                bool isFrontFace = faceSign > 0;
-
-                float4 baseCol = isFrontFace ? _LiquidColor : _TopColor;
-
-                // Blend toward the top/section color
-                //baseCol.rgb = lerp(baseCol.rgb, _TopColor.rgb, 1.0 - edgeBand);
-
-                // Rim light
-                if (surface < 0 && isFrontFace)
+                for(int i = 0; i < 100; i++)
                 {
-                    // baseCol.rgb += _RimColor.rgb * fresnel * 0.15;
-                    return baseCol;
-                }
-                else
-                {
-                    float3 camPos = GetCameraPositionWS();
-                    float3 camRay = normalize(IN.positionWS - camPos);
-                    float3 relativeWS = camPos;
+                    relativeWS = currentPos - _SurfaceOriginWS;
+                    float wave1 = sin(relativeWS.x * _WaveFreq + t) * dynamicAmp;
+                    float wave2 = sin(relativeWS.z * (_WaveFreq * 0.85) + t * 1.17) * (dynamicAmp * 0.55);
+                    float wave3 = sin((relativeWS.x + relativeWS.z) * (_WaveFreq * 0.6) + t * 0.73) * (dynamicAmp * 0.4);
+                    float wave4 = sin((relativeWS.x - relativeWS.z) * (_WaveFreq * 1.35) - t * 1.41) * (dynamicAmp * 0.2);
+                    float wave = wave1 + wave2 + wave3 + wave4;
+                    wave *= 3;
 
-                    for(int i = 0; i < 100; i++)
-                    {
-                        float wave1 = sin(relativeWS.x * _WaveFreq + t) * dynamicAmp;
-                        float wave2 = sin(relativeWS.z * (_WaveFreq * 0.85) + t * 1.17) * (dynamicAmp * 0.55);
-                        float wave3 = sin((relativeWS.x + relativeWS.z) * (_WaveFreq * 0.6) + t * 0.73) * (dynamicAmp * 0.4);
-                        float wave4 = sin((relativeWS.x - relativeWS.z) * (_WaveFreq * 1.35) - t * 1.41) * (dynamicAmp * 0.2);
-                        float wave = wave1 + wave2 + wave3 + wave4;
-                        wave *= 3;
-
-                        float sdf = dot(relativeWS - _SurfaceOriginWS, liquidUpWS) - wave;
-                        if(sdf < 0.01 && sdf > 0)
-                        {
-                            float4 col = float4(saturate(relativeWS - _SurfaceOriginWS), 1);
-                            //col = float4(-wave,-wave,-wave,1);
-                            col = float4(0,1,0,1);
-                            return col;
-                        }
-
-                        //clip both front and back face if there is not collision
-                        if((distance(camPos, relativeWS) < distance(camPos,IN.positionWS) && isFrontFace))
-                        {
-                            clip(-1);
-                            return float4(0,0,0,0);
-                        }
-                        if((distance(camPos, relativeWS) > distance(camPos,IN.positionWS) && !isFrontFace))
-                        {
-                            clip(-1);
-                            return float4(0,0,0,0);
-                        }
+                    float sdf = dot(relativeWS, liquidUpWS) - wave;
                         
-                        relativeWS += camRay * sdf;
+                    if(sdf > 0)
+                    {
+                        clip(-1);
+                        return float4(0,0,0,0);
+                    }
+
+                    if(sdf > -0.01 && sdf < 0)
+                    {
+                        float4 col = float4(saturate(relativeWS), 1);
+                        col = float4(-wave,-wave,-wave,1);
+                        //col = float4(0,1,0,1);
+                        return col;
                     }
                     
-                    return float4(1,0,0,1);
+                    // if((distance(camPos, currentPos) > distance(camPos, IN.positionWS)))
+                    // {
+                    //     clip(-1);
+                    //     return float4(0,0,0,0);
+                    // }
+                        
+                    currentPos += camRay * sdf;
                 }
 
+                return float4(1,0,0,1);
+
             }
+
+            ENDHLSL
+        }
+        
+        //GrabPass { "_BackFaceTex" }
+
+        Pass
+        {
+            Name "Forward"
+            Tags { "LightMode"="UniversalForward" }
+
+            Blend SrcAlpha OneMinusSrcAlpha
+            ZWrite On
+            Cull Back
+
+            HLSLPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+
+            sampler2D _BackFaceTex;
+
+            struct Attributes
+            {
+                float4 positionOS : POSITION;
+                float3 normalOS : NORMAL;
+            };
+
+            struct Varyings
+            {
+                float4 positionHCS : SV_POSITION;
+                float3 positionWS : TEXCOORD0;
+                float3 normalWS : TEXCOORD1;
+                float3 viewDirWS : TEXCOORD2;
+            };
+
+            CBUFFER_START(UnityPerMaterial)
+                float4 _LiquidColor;
+                float4 _TopColor;
+                float4 _RimColor;
+                float4 _SurfaceOriginWS;
+                float _WobbleX;
+                float _WobbleZ;
+                float _WaveAmp;
+                float _WaveFreq;
+                float _WaveSpeed;
+                float _EdgeWidth;
+                float _RimPower;
+            CBUFFER_END
+
+            Varyings vert(Attributes IN)
+            {
+                Varyings OUT;
+
+                // Convert the vertex position into clip space for rendering
+                VertexPositionInputs posInputs = GetVertexPositionInputs(IN.positionOS.xyz);
+
+                // Convert the object space normal into world space for lighting later
+                VertexNormalInputs normInputs = GetVertexNormalInputs(IN.normalOS);
+
+                OUT.positionHCS = posInputs.positionCS;
+                OUT.positionWS = posInputs.positionWS;
+                OUT.normalWS = normalize(normInputs.normalWS);
+
+                // Store view direction so the fragment shader can do rim shading
+                OUT.viewDirWS = normalize(GetWorldSpaceViewDir(posInputs.positionWS));
+
+                return OUT;
+            }
+
+            half4 frag(Varyings IN, half faceSign : VFACE) : SV_Target
+            {
+                // Build a tilted up direction for the liquid surface
+                // _WobbleX and _WobbleZ come from script (used to fake liquid movement/displacement)
+                float3 liquidUpWS = normalize(float3(_WobbleX, 1.0, _WobbleZ));
+
+                // Position of current pixel relative to the liquid surface origin in world space
+                float3 relativeWS = IN.positionWS - _SurfaceOriginWS.xyz;
+
+                // Increase ripple amplitude by wobble amount when bottle is in motion
+                float wobbleAmount = saturate(length(float2(_WobbleX, _WobbleZ)) * 8.0);
+                float dynamicAmp = lerp(_WaveAmp * 0.35, _WaveAmp, wobbleAmount);
+
+                // Animate the wave motion over time
+                float t = _Time.y * _WaveSpeed;
+
+                float4 baseCol = _LiquidColor;
+                
+                float3 camPos = GetCameraPositionWS();
+                float3 camRay = normalize(IN.positionWS - camPos);
+                float3 currentPos = IN.positionWS;
+
+                for(int i = 0; i < 100; i++)
+                {
+                    relativeWS = currentPos - _SurfaceOriginWS;
+                    float wave1 = sin(relativeWS.x * _WaveFreq + t) * dynamicAmp;
+                    float wave2 = sin(relativeWS.z * (_WaveFreq * 0.85) + t * 1.17) * (dynamicAmp * 0.55);
+                    float wave3 = sin((relativeWS.x + relativeWS.z) * (_WaveFreq * 0.6) + t * 0.73) * (dynamicAmp * 0.4);
+                    float wave4 = sin((relativeWS.x - relativeWS.z) * (_WaveFreq * 1.35) - t * 1.41) * (dynamicAmp * 0.2);
+                    float wave = wave1 + wave2 + wave3 + wave4;
+                    wave *= 3;
+
+                    float sdf = dot(relativeWS, liquidUpWS) - wave;
+                    
+                    if(sdf < 0)
+                    {
+                        return baseCol;
+                        clip(-1);
+                        return float4(0,0,0,0);
+                    }
+
+                    if(sdf < 0.01 && sdf > 0)
+                    {
+                        float4 col = float4(saturate(relativeWS), 1);
+                        col = float4(-wave,-wave,-wave,1);
+                        //col = float4(0,1,0,1);
+                        return col;
+                    }
+                    
+                    if((distance(camPos, currentPos) < distance(camPos, IN.positionWS)))
+                    {
+                        clip(-1);
+                        return float4(0,0,0,0);
+                    }
+
+                    currentPos += camRay * sdf;
+                }
+
+                return float4(1,0,0,1);
+
+            }
+
             ENDHLSL
         }
     }
