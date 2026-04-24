@@ -118,21 +118,19 @@ Shader "Custom/FakeLiquidMarched"
 
                 // Combine into final offset
                 float wave = wave1 + wave2 + wave3 + wave4;
+                wave *= 3;
+                //wave = -length(relativeWS.xz);//distance(relativeWS.xz, float2(0,0));
 
                 // Compute signed distance from current pixel to the fake liquid surface plane
                 // Positive/negative tells us whether the fragment is above or below the liquid surface
                 float surface = dot(relativeWS, liquidUpWS) - wave;
 
                 // Discard everything above the liquid surface
-                clip(-surface);
+                //clip(-surface);
 
                 // Soft band around the cut line to help blend toward the top color
-                float edgeBand = smoothstep(0.0, _EdgeWidth, abs(surface));
 
                 // Fresnel/rim setup
-                float3 N = normalize(IN.normalWS);
-                float3 V = normalize(IN.viewDirWS);
-                float fresnel = pow(1.0 - saturate(dot(N, V)), _RimPower);
 
                 // Determine whether we are rendering the front or back face
                 // If front face, int the inner top surface differently from the outer liquid body to fake a liquid surface
@@ -141,30 +139,51 @@ Shader "Custom/FakeLiquidMarched"
                 float4 baseCol = isFrontFace ? _LiquidColor : _TopColor;
 
                 // Blend toward the top/section color
-                baseCol.rgb = lerp(baseCol.rgb, _TopColor.rgb, 1.0 - edgeBand);
+                //baseCol.rgb = lerp(baseCol.rgb, _TopColor.rgb, 1.0 - edgeBand);
 
                 // Rim light
-                if (isFrontFace)
+                if (surface < 0 && isFrontFace)
                 {
-                    baseCol.rgb += _RimColor.rgb * fresnel * 0.15;
+                    // baseCol.rgb += _RimColor.rgb * fresnel * 0.15;
                     return baseCol;
                 }
                 else
                 {
                     float3 camPos = GetCameraPositionWS();
                     float3 camRay = normalize(IN.positionWS - camPos);
-                    float3 currentPos = camPos;
+                    float3 relativeWS = camPos;
 
-                    for(int i = 0; i < 60; i++)
+                    for(int i = 0; i < 100; i++)
                     {
-                        float sdf = dot(currentPos - _SurfaceOriginWS, liquidUpWS) - wave;
-                        if(sdf < 0.01)
+                        float wave1 = sin(relativeWS.x * _WaveFreq + t) * dynamicAmp;
+                        float wave2 = sin(relativeWS.z * (_WaveFreq * 0.85) + t * 1.17) * (dynamicAmp * 0.55);
+                        float wave3 = sin((relativeWS.x + relativeWS.z) * (_WaveFreq * 0.6) + t * 0.73) * (dynamicAmp * 0.4);
+                        float wave4 = sin((relativeWS.x - relativeWS.z) * (_WaveFreq * 1.35) - t * 1.41) * (dynamicAmp * 0.2);
+                        float wave = wave1 + wave2 + wave3 + wave4;
+                        wave *= 3;
+
+                        float sdf = dot(relativeWS - _SurfaceOriginWS, liquidUpWS) - wave;
+                        if(sdf < 0.01 && sdf > 0)
                         {
-                            float4 col = float4(saturate(currentPos - _SurfaceOriginWS), 1);
+                            float4 col = float4(saturate(relativeWS - _SurfaceOriginWS), 1);
+                            //col = float4(-wave,-wave,-wave,1);
+                            col = float4(0,1,0,1);
                             return col;
                         }
+
+                        //clip both front and back face if there is not collision
+                        if((distance(camPos, relativeWS) < distance(camPos,IN.positionWS) && isFrontFace))
+                        {
+                            clip(-1);
+                            return float4(0,0,0,0);
+                        }
+                        if((distance(camPos, relativeWS) > distance(camPos,IN.positionWS) && !isFrontFace))
+                        {
+                            clip(-1);
+                            return float4(0,0,0,0);
+                        }
                         
-                        currentPos += camRay * sdf;
+                        relativeWS += camRay * sdf;
                     }
                     
                     return float4(1,0,0,1);
