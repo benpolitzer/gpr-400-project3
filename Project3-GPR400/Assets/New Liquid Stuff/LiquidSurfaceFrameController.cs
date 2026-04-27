@@ -58,6 +58,17 @@ public class LiquidSurfaceFrameController : MonoBehaviour
     [SerializeField] private float edgeSoftness = 0.06f;
     [SerializeField, Range(0.5f, 1f)] private float edgeDamping = 0.84f;
 
+    [Header("Dynamic Surface Footprint")]
+    [SerializeField] private bool useDynamicFootprint = true;
+    [SerializeField] private Vector3 containerAxisLocal = Vector3.forward;
+    [SerializeField] private float containerRadius = 0.5f;
+    [SerializeField] private float containerHalfLength = 1.0f;
+    [SerializeField] private float minAxisAlignment = 0.15f;
+    [SerializeField] private float footprintPadding = 0.02f;
+
+    private float currentContainerRadiusX;
+    private float currentContainerRadiusZ;
+
     [Header("Volume Seam")]
     [SerializeField] private float volumeSurfaceOverlap = 0.025f;
     [SerializeField] private float volumeTopFadeWidth = 0.08f;
@@ -85,6 +96,7 @@ public class LiquidSurfaceFrameController : MonoBehaviour
     [SerializeField] private float edgeWaveAmplitude = 0.025f;
     [SerializeField] private float edgeWaveFrequency = 26f;
     [SerializeField] private float edgeWaveSpeed = 5.5f;
+
 
     // Current amount of visual disturbance
     private float disturbanceAmount;
@@ -245,7 +257,37 @@ public class LiquidSurfaceFrameController : MonoBehaviour
 
         return stateB;
     }
+    private void UpdateDynamicFootprint()
+    {
+        if (!useDynamicFootprint)
+        {
+            currentContainerRadiusX = containerRadiusX;
+            currentContainerRadiusZ = containerRadiusZ;
+            return;
+        }
 
+        if (bottleTransform == null || surfaceFrame == null)
+        {
+            currentContainerRadiusX = containerRadiusX;
+            currentContainerRadiusZ = containerRadiusZ;
+            return;
+        }
+
+        Vector3 bottleAxisWS = bottleTransform.TransformDirection(containerAxisLocal).normalized;
+        Vector3 liquidNormalWS = surfaceFrame.up.normalized;
+
+        float axisAlignment = Mathf.Abs(Vector3.Dot(bottleAxisWS, liquidNormalWS));
+        axisAlignment = Mathf.Max(axisAlignment, minAxisAlignment);
+
+        float stretchedRadius = containerRadius / axisAlignment;
+        float longRadius = Mathf.Min(stretchedRadius, containerHalfLength);
+
+        // Local X is width
+        currentContainerRadiusX = Mathf.Max(0.01f, containerRadius - footprintPadding);
+
+        // Local Z is bottle length because LookRotation uses forward as local Z
+        currentContainerRadiusZ = Mathf.Max(0.01f, longRadius - footprintPadding);
+    }
     private ComputeBuffer GetWriteBuffer()
     {
         if (stateAIsReadBuffer)
@@ -512,12 +554,12 @@ public class LiquidSurfaceFrameController : MonoBehaviour
             return;
         }
 
-        // Position surface frame at fill point inside bottle
         surfaceFrame.position = bottleTransform.TransformPoint(surfaceLocalCenter);
 
-        // Use bottles forward direction projected onto liquid plane
-            // gives surface frame a stable rotation around its up axis
-        Vector3 forwardWS = Vector3.ProjectOnPlane(bottleTransform.forward, currentLiquidNormalWS);
+        Vector3 bottleAxisWS = bottleTransform.TransformDirection(containerAxisLocal).normalized;
+
+        // Project bottle length direction onto liquid plane
+        Vector3 forwardWS = Vector3.ProjectOnPlane(bottleAxisWS, currentLiquidNormalWS);
 
         if (forwardWS.sqrMagnitude < 0.0001f)
         {
@@ -532,6 +574,8 @@ public class LiquidSurfaceFrameController : MonoBehaviour
         forwardWS.Normalize();
 
         surfaceFrame.rotation = Quaternion.LookRotation(forwardWS, currentLiquidNormalWS);
+
+        UpdateDynamicFootprint();
     }
 
     private void UpdateCoherentSlosh(float dt, Vector3 accelSF, Vector3 angularSF)
@@ -612,8 +656,8 @@ public class LiquidSurfaceFrameController : MonoBehaviour
         rippleCompute.SetVector("_SloshVector", new Vector4(sloshVector.x, sloshVector.y, 0f, 0f));
 
         // Shape mask for surface
-        rippleCompute.SetFloat("_ContainerRadiusX", containerRadiusX);
-        rippleCompute.SetFloat("_ContainerRadiusZ", containerRadiusZ);
+        rippleCompute.SetFloat("_ContainerRadiusX", currentContainerRadiusX);
+        rippleCompute.SetFloat("_ContainerRadiusZ", currentContainerRadiusZ);
         rippleCompute.SetFloat("_EdgeSoftness", edgeSoftness);
         rippleCompute.SetFloat("_EdgeDamping", edgeDamping);
 
@@ -668,8 +712,8 @@ public class LiquidSurfaceFrameController : MonoBehaviour
         surfaceBlock.SetFloat("_GridSizeZ", surfaceGrid.SizeZ);
 
         // Shape mask used by shader
-        surfaceBlock.SetFloat("_ContainerRadiusX", containerRadiusX);
-        surfaceBlock.SetFloat("_ContainerRadiusZ", containerRadiusZ);
+        surfaceBlock.SetFloat("_ContainerRadiusX", currentContainerRadiusX);
+        surfaceBlock.SetFloat("_ContainerRadiusZ", currentContainerRadiusZ);
         surfaceBlock.SetFloat("_EdgeSoftness", edgeSoftness);
 
         liquidSurfaceRenderer.SetPropertyBlock(surfaceBlock);
