@@ -1,0 +1,227 @@
+#pragma kernel CSMain
+
+struct VertexState
+{
+    float3 restPosOS;
+    float heightOffset;
+    float heightVelocity;
+};
+
+StructuredBuffer<VertexState> _StateRead;
+RWStructuredBuffer<VertexState> _StateWrite;
+
+int _VertexCount;
+int _GridWidth;
+int _GridHeight;
+
+float _DeltaTime;
+
+float _SpringStrength;
+float _VelocityDamping;
+float _WaveStrength;
+float _MaxRippleHeight;
+
+float4 _SloshVector;
+
+float _ContainerRadiusX;
+float _ContainerRadiusZ;
+float _EdgeSoftness;
+float _EdgeDamping;
+
+float _TimeValue;
+float _DisturbanceAmount;
+
+float _DetailWaveAmplitude;
+float _DetailWaveFrequency;
+float _DetailWaveSpeed;
+
+float _EdgeWaveAmplitude;
+float _EdgeWaveFrequency;
+float _EdgeWaveSpeed;
+
+uint CoordToIndex(int x, int y)
+{
+    return (uint)(y * _GridWidth + x);
+}
+
+// Ellipse footprint mask
+    // Returns:
+        // 1 near center
+        // 0 at edge
+        // <0 outside
+float ContainerSignedDistance01(float3 p)
+{
+    float rx = max(_ContainerRadiusX, 0.0001);
+    float rz = max(_ContainerRadiusZ, 0.0001);
+
+    float2 q = float2(p.x / rx, p.z / rz);
+
+    return 1.0 - length(q);
+}
+
+// Convert footprint distance into 0 to 1 mask
+float ContainerMask(float3 p)
+{
+    float d = ContainerSignedDistance01(p);
+    return saturate(d / max(_EdgeSoftness, 0.0001));
+}
+
+bool IsInsideContainer(float3 p)
+{
+    return ContainerSignedDistance01(p) >= 0.0;
+}
+
+// Read neighbor height from previous simulation buffer
+// If neighbor is outside grid or footprint use fallback height
+float GetHeightOrWall(int x, int y, float fallbackHeight)
+{
+    if (x < 0 || x >= _GridWidth || y < 0 || y >= _GridHeight)
+        return fallbackHeight;
+
+    uint index = CoordToIndex(x, y);
+    VertexState ns = _StateRead[index];
+
+    if (!IsInsideContainer(ns.restPosOS))
+        return fallbackHeight;
+
+    return ns.heightOffset;
+}
+
+// Small procedural waves across liquid surface
+// Visual detail layer only not core simulation
+float SmallWaveDetail(float2 p, float timeValue)
+{
+    float w1 = sin(p.x * _DetailWaveFrequency + timeValue * _DetailWaveSpeed);
+    float w2 = cos((p.y * _DetailWaveFrequency * 0.73) - timeValue * (_DetailWaveSpeed * 1.31));
+    float w3 = sin((p.x + p.y) * (_DetailWaveFrequency * 0.47) + timeValue * (_DetailWaveSpeed * 0.77));
+
+    return (w1 * 0.45 + w2 * 0.35 + w3 * 0.20);
+}
+
+// Radial wave detail near container wall
+// Helps suggest boundary interaction
+float EdgeWaveDetail(float3 p, float signedDistance01, float mask, float timeValue)
+{
+    // signedDistance01 is 1 at center and 0 at boundary
+    // Build a band near edge
+    float edgeBand = 1.0 - smoothstep(0.0, 0.35, signedDistance01);
+
+    // Skip vertices fully outside valid mask
+    edgeBand *= mask;
+
+    // Normalized distance from center with ellipse scale
+    float radial = length(float2(
+        p.x / max(_ContainerRadiusX, 0.0001),
+        p.z / max(_ContainerRadiusZ, 0.0001)
+    ));
+
+    float wave = sin(radial * _EdgeWaveFrequency - timeValue * _EdgeWaveSpeed);
+
+    return wave * edgeBand;
+}
+
+[numthreads(64, 1, 1)]
+void CSMain(uint3 id : SV_DispatchThreadID)
+{
+    uint i = id.x;
+
+    if (i >= _VertexCount)
+        return;
+
+    VertexState s = _StateRead[i];
+
+    float dt = max(_DeltaTime, 0.0001);
+    float3 p = s.restPosOS;
+
+    // Check if vertex is inside valid liquid footprint
+    float signedDistance01 = ContainerSignedDistance01(p);
+    float mask = ContainerMask(p);
+
+    // Outside footprint reset to flat and stop movement
+    if (mask <= 0.0)
+    {
+        s.heightOffset = 0.0;
+        s.heightVelocity = 0.0;
+        _StateWrite[i] = s;
+        return;
+    }
+
+    // Convert linear index into grid coordinates
+    int x = (int)(i % (uint)_GridWidth);
+    int y = (int)(i / (uint)_GridWidth);
+
+    float hC = s.heightOffset;
+
+    // Neighbor heights for wave propagation
+    float hL = GetHeightOrWall(x - 1, y, hC);
+    float hR = GetHeightOrWall(x + 1, y, hC);
+    float hD = GetHeightOrWall(x, y - 1, hC);
+    float hU = GetHeightOrWall(x, y + 1, hC);
+
+    float hLD = GetHeightOrWall(x - 1, y - 1, hC);
+    float hRD = GetHeightOrWall(x + 1, y - 1, hC);
+    float hLU = GetHeightOrWall(x - 1, y + 1, hC);
+    float hRU = GetHeightOrWall(x + 1, y + 1, hC);
+
+    // Weighted neighbor average
+    // Diagonal neighbors count slightly less
+    float ortho = hL + hR + hD + hU;
+    float diag = hLD + hRD + hLU + hRU;
+
+    float averageHeight = (ortho + 0.70710678 * diag) / (4.0 + 4.0 * 0.70710678);
+
+    // Large slosh target
+    // One side rises while opposite side lowers
+    float sloshTarget = dot(p.xz, _SloshVector.xy);
+
+    // Reduce movement close to clipped edge
+    sloshTarget *= mask;
+
+    // Small procedural detail appears only during disturbance
+    float disturbance = saturate(_DisturbanceAmount);
+
+    float smallWaves = SmallWaveDetail(p.xz, _TimeValue);
+    smallWaves *= _DetailWaveAmplitude;
+    smallWaves *= disturbance;
+
+    float edgeWaves = EdgeWaveDetail(p, signedDistance01, mask, _TimeValue);
+    edgeWaves *= _EdgeWaveAmplitude;
+    edgeWaves *= disturbance;
+
+    // Final target height for current vertex
+    float targetHeight = sloshTarget + smallWaves + edgeWaves;
+
+    // Spring pulls vertex toward target height
+    float springForce = (targetHeight - hC) * _SpringStrength;
+
+    // Wave force pulls vertex toward neighbor average
+    float waveForce = (averageHeight - hC) * _WaveStrength;
+
+    float totalForce = springForce + waveForce;
+
+    // Integrate velocity and height
+    s.heightVelocity += totalForce * dt;
+
+    // Apply stronger damping near edge to stop rim flapping
+    float localDamping = lerp(_EdgeDamping, _VelocityDamping, mask);
+    s.heightVelocity *= pow(saturate(localDamping), dt * 60.0);
+
+    s.heightOffset += s.heightVelocity * dt;
+
+    // Clamp displacement for stability
+    if (s.heightOffset > _MaxRippleHeight)
+    {
+        s.heightOffset = _MaxRippleHeight;
+        s.heightVelocity *= -0.15;
+    }
+    else if (s.heightOffset < -_MaxRippleHeight)
+    {
+        s.heightOffset = -_MaxRippleHeight;
+        s.heightVelocity *= -0.15;
+    }
+
+    // Pull rim back toward flat so edge does not flap like cloth
+    s.heightOffset = lerp(0.0, s.heightOffset, mask);
+
+    _StateWrite[i] = s;
+}
