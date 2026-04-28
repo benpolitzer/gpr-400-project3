@@ -2,7 +2,7 @@
 // Benjamin Politzer - Based on Minions Art Patreon post to pass movement data along with world fill position data to the shader
 using UnityEngine;
 
-[ExecuteAlways]
+//[ExecuteAlways]
 public class LiquidWobble : MonoBehaviour
 {
     [SerializeField] private Renderer liquidRenderer;
@@ -26,7 +26,7 @@ public class LiquidWobble : MonoBehaviour
     private void OnEnable()
     {
         if (liquidRenderer != null)
-            liquidMaterial = liquidRenderer.sharedMaterial;
+            liquidMaterial = liquidRenderer.material;
 
         lastPosition = transform.position;
         lastEulerAngles = transform.eulerAngles;

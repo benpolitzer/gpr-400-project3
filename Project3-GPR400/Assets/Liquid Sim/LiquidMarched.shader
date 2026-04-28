@@ -129,7 +129,6 @@ Shader "Custom/FakeLiquidMarched"
                 float wave3 = sin((relativeWS.x + relativeWS.z) * (_WaveFreq * 0.6) + t * 0.73) * (dynamicAmp * 0.4);
                 float wave4 = sin((relativeWS.x - relativeWS.z) * (_WaveFreq * 1.35) - t * 1.41) * (dynamicAmp * 0.2);
                 float wave = wave1 + wave2 + wave3 + wave4;
-                wave *= 3;
                 
                 float sdf = dot(relativeWS, liquidUpWS) - wave;
 
@@ -249,17 +248,10 @@ Shader "Custom/FakeLiquidMarched"
                     float wave3 = sin((relativeWS.x + relativeWS.z) * (_WaveFreq * 0.6) + t * 0.73) * (dynamicAmp * 0.4);
                     float wave4 = sin((relativeWS.x - relativeWS.z) * (_WaveFreq * 1.35) - t * 1.41) * (dynamicAmp * 0.2);
                     float wave = wave1 + wave2 + wave3 + wave4;
-                    wave *= 3;
 
                     float sdf = dot(relativeWS, liquidUpWS) - wave;
-                        
-                    if(sdf > 0)
-                    {
-                        clip(-1);
-                        return float4(0,0,0,0);
-                    }
 
-                    if(sdf > -0.01 && sdf < 0)
+                    if(sdf > -0.01 && sdf < 0.01)
                     {
                         float4 col = float4(saturate(relativeWS), 1);
                         col = float4(-wave,-wave,-wave,1);
@@ -267,13 +259,13 @@ Shader "Custom/FakeLiquidMarched"
                         return col;
                     }
                     
-                    // if((distance(camPos, currentPos) > distance(camPos, IN.positionWS)))
-                    // {
-                    //     clip(-1);
-                    //     return float4(0,0,0,0);
-                    // }
+                    if((distance(camPos, currentPos) > distance(camPos, IN.positionWS)))
+                    {
+                        clip(-1);
+                        return float4(0,0,0,0);
+                    }
                         
-                    currentPos += camRay * sdf;
+                    currentPos += camRay * sdf * 0.9;
                 }
 
                 return float4(1,0,0,1);
