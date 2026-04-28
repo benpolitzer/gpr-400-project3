@@ -2,55 +2,92 @@ Shader "Custom/LiquidVertDispSimple"
 {
     Properties
     {
+        _Color ("Color", Color) = (0.2, 0.8, 1.0, 0.75)
+
+        _ClipCenterX ("Clip Center X", Float) = 0
+        _ClipCenterZ ("Clip Center Z", Float) = 0
+        _ClipRadiusX ("Clip Radius X", Float) = 0.5
+        _ClipRadiusZ ("Clip Radius Z", Float) = 1.0
     }
+
     SubShader
     {
-        Tags { "RenderType"="Opaque" }
-        LOD 200
-        Pass{
+        Tags
+        {
+            "RenderType"="Transparent"
+            "Queue"="Transparent"
+        }
+
+        Blend SrcAlpha OneMinusSrcAlpha
+        ZWrite Off
+        Cull Off
+
+        Pass
+        {
             CGPROGRAM
-            // Use shader model 3.0 target, to get nicer looking lighting
-            #pragma target 3.0
+
+            #pragma target 4.5
             #pragma vertex vert
             #pragma fragment frag
 
-            //must be the same as compute and scripts
+            #include "UnityCG.cginc"
+
+            fixed4 _Color;
+
+            float _ClipCenterX;
+            float _ClipCenterZ;
+            float _ClipRadiusX;
+            float _ClipRadiusZ;
+
             struct vertexData
             {
                 float3 position;
             };
 
-            //buffer from compute
             StructuredBuffer<vertexData> verts;
 
             struct appdata
             {
+                float4 vertex : POSITION;
                 uint vertexID : SV_VertexID;
             };
 
             struct v2f
             {
                 float4 vertPos : SV_POSITION;
+                float3 localPos : TEXCOORD0;
             };
 
-        
-            v2f vert (appdata input)
+            v2f vert(appdata input)
             {
                 v2f o;
-                //sends out data gotten from the buffer sampling based on vertex id
+
                 vertexData v = verts[input.vertexID];
-                o.vertPos = float4(UnityObjectToClipPos(v.position));
+
+                o.localPos = v.position;
+                o.vertPos = UnityObjectToClipPos(float4(v.position, 1.0));
+
                 return o;
             }
 
-            fixed4 frag (v2f i) : SV_Target
+            fixed4 frag(v2f i) : SV_Target
             {
-                fixed4 col = fixed4(1.0,1.0,1.0,1.0);
-                return col;
+                float x = i.localPos.x - _ClipCenterX;
+                float z = i.localPos.z - _ClipCenterZ;
+
+                float normalizedX = x / _ClipRadiusX;
+                float normalizedZ = z / _ClipRadiusZ;
+
+                float ellipseValue = normalizedX * normalizedX + normalizedZ * normalizedZ;
+
+                // Keep pixels inside the ellipse.
+                // Discard pixels outside.
+                clip(1.0 - ellipseValue);
+
+                return _Color;
             }
 
             ENDCG
         }
     }
-    FallBack "Diffuse"
 }

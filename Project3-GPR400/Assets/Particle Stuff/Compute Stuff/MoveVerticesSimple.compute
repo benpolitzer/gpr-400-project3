@@ -1,4 +1,3 @@
-// Each #kernel tells which function to compile; you can have many kernels
 #pragma kernel MoveVertices
 
 struct vertexData
@@ -6,52 +5,55 @@ struct vertexData
     float3 position;
 };
 
-//data that doesn't change (in scripting)
+StructuredBuffer<vertexData> baseVerts;
 RWStructuredBuffer<vertexData> verts;
+
 uint vertCount;
 
-int threadGroups;
-
-//data that does change
 float time;
 
-float3 _SurfaceOriginWS;
 float _WobbleX;
 float _WobbleZ;
-float _WaveAmp = 0.02;
-float _WaveFreq = 8;
-float _WaveSpeed = 2;
 
-[numthreads(8, 8, 1)]
+float _WaveAmp;
+float _WaveFreq;
+float _WaveSpeed;
+
+float _FillY;
+float _CenterX;
+float _CenterZ;
+
+[numthreads(64, 1, 1)]
 void MoveVertices(uint3 id : SV_DispatchThreadID)
 {
-    //calculate unique index
-    uint index = id.x + id.y * 8 * threadGroups;
-    
+    uint index = id.x;
+
     if (index >= vertCount)
         return;
-    
-    //getting data in the buffer
-    vertexData v = verts[index];
 
-    //wave calculations
-    float3 liquidUpWS = normalize(float3(_WobbleX, 1.0, _WobbleZ));
-    float3 relativeWS = v.position - _SurfaceOriginWS;
-    
+    vertexData original = baseVerts[index];
+    vertexData v = original;
+
+    // Local-space position relative to the center of the surface
+    float x = original.position.x - _CenterX;
+    float z = original.position.z - _CenterZ;
+
+    float t = time * _WaveSpeed;
+
     float wobbleAmount = saturate(length(float2(_WobbleX, _WobbleZ)) * 8.0);
     float dynamicAmp = lerp(_WaveAmp * 0.35, _WaveAmp, wobbleAmount);
-    
-    float t = time * _WaveSpeed;
-    
-    float wave1 = sin(relativeWS.x * _WaveFreq + t) * dynamicAmp;
-    float wave2 = sin(relativeWS.z * (_WaveFreq * 0.85) + t * 1.17) * (dynamicAmp * 0.55);
-    float wave3 = sin((relativeWS.x + relativeWS.z) * (_WaveFreq * 0.6) + t * 0.73) * (dynamicAmp * 0.4);
-    float wave4 = sin((relativeWS.x - relativeWS.z) * (_WaveFreq * 1.35) - t * 1.41) * (dynamicAmp * 0.2);
+
+    float wave1 = sin(x * _WaveFreq + t) * dynamicAmp;
+    float wave2 = sin(z * (_WaveFreq * 0.85) + t * 1.17) * (dynamicAmp * 0.55);
+    float wave3 = sin((x + z) * (_WaveFreq * 0.6) + t * 0.73) * (dynamicAmp * 0.4);
+    float wave4 = sin((x - z) * (_WaveFreq * 1.35) - t * 1.41) * (dynamicAmp * 0.2);
+
     float wave = wave1 + wave2 + wave3 + wave4;
-    
-    //setting new data to a temp
-    v.position.y = dot(float3(relativeWS.x, 0, relativeWS.z), liquidUpWS) - wave;
-    
-    //setting the buffers data to the temp
+
+    // Tilt surface around its center
+    float wobbleTilt = x * _WobbleX + z * _WobbleZ;
+
+    v.position.y = _FillY + wobbleTilt - wave;
+
     verts[index] = v;
 }
