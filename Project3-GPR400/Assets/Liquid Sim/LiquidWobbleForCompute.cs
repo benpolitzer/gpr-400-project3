@@ -39,8 +39,8 @@ public class LiquidWobbleForCompute : MonoBehaviour
 
         vertexCount = mesh.vertexCount;
 
-        Debug.Log("Liquid verts: " + mesh.vertexCount);
-        Debug.Log("Liquid triangles: " + mesh.triangles.Length / 3);
+        //Debug.Log("Liquid verts: " + mesh.vertexCount);
+        //Debug.Log("Liquid triangles: " + mesh.triangles.Length / 3);
 
         baseVertexBuffer = new ComputeBuffer(vertexCount, sizeof(float) * 3);
         displacedVertexBuffer = new ComputeBuffer(vertexCount, sizeof(float) * 3);
