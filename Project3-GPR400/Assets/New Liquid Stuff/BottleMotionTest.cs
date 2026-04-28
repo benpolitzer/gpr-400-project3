@@ -4,7 +4,8 @@ public class BottleMotionTest : MonoBehaviour
 {
     [SerializeField] private float moveAmount = 0.25f;
     [SerializeField] private float moveSpeed = 1.4f;
-    [SerializeField] private float rotateAmount = 45f;
+
+    [SerializeField] private float rotateAmount = 10f;
     [SerializeField] private float rotateSpeed = 1.1f;
 
     private Vector3 startPosition;

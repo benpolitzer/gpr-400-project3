@@ -7,6 +7,7 @@ public class LiquidWobbleForCompute : MonoBehaviour
 
     private int kernelIndex;
     private Material material;
+    private ComputeBuffer vertexBuffer;
     private int threadGroups;
 
     [Header("Wobble")]
