@@ -39,7 +39,7 @@ Shader "Custom/LiquidVertDispSimple"
                 v2f o;
                 //sends out data gotten from the buffer sampling based on vertex id
                 vertexData v = verts[input.vertexID];
-                o.vertPos = float4(v.position, 1.0);
+                o.vertPos = float4(UnityObjectToClipPos(v.position));
                 return o;
             }
 

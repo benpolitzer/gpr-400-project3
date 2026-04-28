@@ -33,7 +33,7 @@ public class LiquidWobbleForCompute : MonoBehaviour
         vertexCount = GetComponent<MeshFilter>().mesh.vertexCount;
 
         //initialise vertex data based on size needed
-        vertexBuffer = new ComputeBuffer(vertexCount * vertexCount, sizeof(float) * 3);
+        vertexBuffer = new ComputeBuffer(vertexCount, sizeof(float) * 3);
         vertexBuffer.SetData(GetComponent<MeshFilter>().mesh.vertices);
         threadGroups = ((int)Mathf.Sqrt(vertexCount)) / 8;
 
@@ -53,7 +53,6 @@ public class LiquidWobbleForCompute : MonoBehaviour
 
     private void Update()
     {
-        vertexCount = GetComponent<MeshFilter>().mesh.vertexCount;
         float dt = Mathf.Max(Application.isPlaying ? Time.deltaTime : 0.016f, 0.0001f);
 
         // How much the object moved since last frame
@@ -99,10 +98,16 @@ public class LiquidWobbleForCompute : MonoBehaviour
 
         computeShader.Dispatch(kernelIndex, threadGroups, threadGroups, 1);
 
-        //vertexBuffer.GetData();
+        //vertexBuffer.GetData(GetComponent<MeshFilter>().mesh.vertices);
 
         // Store current frame's transform so the next frame can measure movement against it
         lastPosition = transform.position;
         lastEulerAngles = transform.eulerAngles;
+    }
+
+    private void OnDisable()
+    {
+        vertexBuffer?.Release();
+        vertexBuffer = null;
     }
 }

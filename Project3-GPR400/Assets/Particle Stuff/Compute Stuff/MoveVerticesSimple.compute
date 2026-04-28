@@ -18,9 +18,9 @@ float time;
 float3 _SurfaceOriginWS;
 float _WobbleX;
 float _WobbleZ;
-float _WaveAmp;
-float _WaveFreq;
-float _WaveSpeed;
+float _WaveAmp = 0.02;
+float _WaveFreq = 8;
+float _WaveSpeed = 2;
 
 [numthreads(8, 8, 1)]
 void MoveVertices(uint3 id : SV_DispatchThreadID)
@@ -50,7 +50,7 @@ void MoveVertices(uint3 id : SV_DispatchThreadID)
     float wave = wave1 + wave2 + wave3 + wave4;
     
     //setting new data to a temp
-    v.position.y = dot(relativeWS, liquidUpWS) - wave;
+    v.position.y = dot(float3(relativeWS.x, 0, relativeWS.z), liquidUpWS) - wave;
     
     //setting the buffers data to the temp
     verts[index] = v;
