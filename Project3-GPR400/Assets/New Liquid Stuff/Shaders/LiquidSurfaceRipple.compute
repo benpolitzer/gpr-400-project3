@@ -1,3 +1,4 @@
+// Benjamin Politzer - compute shader for writing updated height offsets into a buffer that the vertex shader uses to deform the liquid mesh
 #pragma kernel CSMain
 
 struct VertexState

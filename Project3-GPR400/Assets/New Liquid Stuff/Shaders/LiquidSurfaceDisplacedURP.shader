@@ -1,3 +1,5 @@
+// Benjamin Politzer - shader that reads the buffer from the compute and then moves each vertex vertically, 
+// rebuilds an approximate normal from neighbors height, and shades the result as a transparent liquid surface.
 Shader "Custom/LiquidSurfaceDisplacedURP"
 {
     Properties
@@ -42,7 +44,6 @@ Shader "Custom/LiquidSurfaceDisplacedURP"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 
-            // Must match the struct used in C# and the compute shader
             struct VertexState
             {
                 float3 restPosOS;

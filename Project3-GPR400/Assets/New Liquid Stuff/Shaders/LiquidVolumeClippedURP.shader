@@ -1,3 +1,4 @@
+// Benjamin Politzer - shader for rendering volume beneathe displaced surface mesh
 Shader "Custom/LiquidVolumeClippedURP"
 {
     Properties

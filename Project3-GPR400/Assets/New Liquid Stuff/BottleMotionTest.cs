@@ -1,3 +1,4 @@
+// Benjamin Politzer & Victor Diab - small movement test to consistently test both vertex displacement and ray marching
 using UnityEngine;
 
 public class BottleMotionTest : MonoBehaviour

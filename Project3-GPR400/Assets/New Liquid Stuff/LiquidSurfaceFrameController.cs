@@ -1,3 +1,5 @@
+// Benjamin Politzer - main interface for the whole system. It tracks the parent containers movement and rotation,
+// converts that motion into liquid normal tilt, slosh direction, and disturbance strength, then sends those values to the compute shader each frame.
 using System.Runtime.InteropServices;
 using UnityEngine;
 
